@@ -14,6 +14,8 @@ import zio.console._
 import zio.interop.catz._
 import zio.interop.catz.implicits._
 import zio.stream.ZStream
+import com.ziverge.config.Configuration
+import com.ziverge.config.Configuration.ServerConfig
 
 object Main extends App {
 
@@ -25,9 +27,9 @@ object Main extends App {
         countState = CountState(ref)
         service = CountService(CountRepository(countState))
         routes = CountRoutes(service).routes()
-        _ <- WordsStream.stream(file, service, Blocking.Service.live).fork
-        _ <- server(routes)
-        _ <- ZIO.never
+        config <- Configuration.load().useNow
+        fiber <- WordsStream(config.streamConfig, service, Blocking.Service.live).stream(file).fork
+        _ <- server(config.server, routes)
       } yield ()
 
     args match {
@@ -38,12 +40,12 @@ object Main extends App {
     }
   }
 
-  def server(routes: HttpApp[Task]) =
+  def server(config: ServerConfig, routes: HttpApp[Task]) =
     ZIO
       .runtime[ZEnv]
       .flatMap { implicit rts =>
         BlazeServerBuilder[Task]
-          .bindHttp(8080, "localhost")
+          .bindHttp(config.port, config.host)
           .withHttpApp(routes)
           .serve
           .compile
