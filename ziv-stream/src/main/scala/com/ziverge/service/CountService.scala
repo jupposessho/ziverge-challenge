@@ -28,26 +28,21 @@ object CountService {
 
     val counts = state
       .map { eventCount =>
-        val wordCounts = eventCount._2.map(e => WordCount(e._1, e._2)).toList
-        eventCount._1 -> wordCounts
+        (eventCount._1._1, eventCount._1._2, eventCount._2)
       }
-      .map(e => EventCount(e._1, e._2))
+      .groupBy(_._1)
+      .map { eventType =>
+        val list = eventType._2.map(e => WordCount(e._2, e._3)).toList
+        EventCount(eventType._1, list)
+      }
       .toList
 
     CountResponse(counts)
   }
 
   private def calculateCount(records: List[Option[InputRecord]]): StateType = {
-    records.flatten.foldLeft(HashMap.empty[String, HashMap[String, Int]]) { (map, record) =>
-      map.updatedWith(record.event_type) { eventType =>
-        eventType
-          .map { countsForType =>
-            countsForType.updatedWith(record.data) { wordCount =>
-              wordCount.map(_ + 1).orElse(Some(1))
-            }
-          }
-          .orElse(Some(HashMap(record.data -> 1)))
-      }
+    records.flatten.foldLeft(HashMap.empty[(String, String), Int]) { (map, record) =>
+      map.updatedWith(record.event_type -> record.data) { keys => keys.map(_ + 1).orElse(Some(1)) }
     }
   }
 }

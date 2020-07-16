@@ -15,7 +15,7 @@ import scala.collection.immutable.HashMap
 
 object CountRoutesSpec extends DefaultRunnableSpec {
 
-  val emptyMap = HashMap.empty[String, HashMap[String, Int]]
+  val emptyMap = HashMap.empty[(String, String), Int]
 
   override def spec = suite("CountRoutes")(
     suite("GET / should respond with")(
@@ -24,8 +24,8 @@ object CountRoutesSpec extends DefaultRunnableSpec {
       },
       testM("multiple counts") {
         val map = HashMap(
-          "foo" -> HashMap("word" -> 2, "hello" -> 2),
-          "bar" -> HashMap("word" -> 2, "other" -> 1),
+          ("foo", "word") -> 2, ("foo", "hello") -> 2,
+          ("bar", "word") -> 2, ("bar", "other") -> 1
         )
         val expected =
           """{"counts":[

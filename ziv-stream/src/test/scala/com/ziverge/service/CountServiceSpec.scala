@@ -11,8 +11,8 @@ import scala.collection.immutable.HashMap
 
 object CountServiceSpec extends DefaultRunnableSpec {
 
-  val emptyMap = HashMap.empty[String, HashMap[String, Int]]
-  val map = HashMap("foo" -> HashMap("word" -> 1))
+  val emptyMap = HashMap.empty[(String, String), Int]
+  val map = HashMap(("foo","word") -> 1)
 
   override def spec = suite("CountService")(
     suite("save should")(
@@ -31,8 +31,8 @@ object CountServiceSpec extends DefaultRunnableSpec {
           Some(InputRecord("bar", "word", 1)),
         )
         val expected = HashMap(
-          "foo" -> HashMap("word" -> 1),
-          "bar" -> HashMap("word" -> 1)
+          ("foo", "word") -> 1,
+          ("bar", "word") -> 1
         )
 
         assertSave(records, expected)
@@ -44,7 +44,7 @@ object CountServiceSpec extends DefaultRunnableSpec {
           Some(InputRecord("foo", "word", 1)),
         )
         val expected = HashMap(
-          "foo" -> HashMap("word" -> 2, "hello" -> 1),
+          ("foo", "word") -> 2, ("foo", "hello") -> 1
         )
 
         assertSave(records, expected)
@@ -60,8 +60,8 @@ object CountServiceSpec extends DefaultRunnableSpec {
           Some(InputRecord("bar", "word", 1)),
         )
         val expected = HashMap(
-          "foo" -> HashMap("word" -> 2, "hello" -> 2),
-          "bar" -> HashMap("word" -> 2, "other" -> 1),
+          ("foo", "word") -> 2, ("foo", "hello") -> 2,
+          ("bar", "word") -> 2, ("bar", "other") -> 1
         )
 
         assertSave(records, expected)
@@ -77,8 +77,8 @@ object CountServiceSpec extends DefaultRunnableSpec {
       },
       testM("state has more elements") {
         val state = HashMap(
-          "foo" -> HashMap("word" -> 2, "hello" -> 2),
-          "bar" -> HashMap("word" -> 2, "other" -> 1),
+          ("foo", "word") -> 2, ("foo", "hello") -> 2,
+          ("bar", "word") -> 2, ("bar", "other") -> 1,
         )
         val expected = List(
           EventCount("bar", List(WordCount("word", 2), WordCount("other", 1))),
@@ -99,7 +99,7 @@ object CountServiceSpec extends DefaultRunnableSpec {
   }
 
   private def assertSave(records: List[Option[InputRecord]],
-                         expected: HashMap[String, HashMap[String, Int]],
+                         expected: StateType,
                          initialState: StateType = emptyMap) = {
     val result = for {
       (repository, service) <- service(initialState)

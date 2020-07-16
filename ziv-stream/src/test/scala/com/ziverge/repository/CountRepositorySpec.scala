@@ -10,8 +10,8 @@ import scala.collection.immutable.HashMap
 
 object CountRepositorySpec extends DefaultRunnableSpec {
 
-  val emptyMap = HashMap.empty[String, HashMap[String, Int]]
-  val map = HashMap("foo" -> HashMap("word" -> 1))
+  val emptyMap = HashMap.empty[(String, String), Int]
+  val map = HashMap(("foo" , "word") -> 1)
 
   override def spec = suite("CountRepository")(
     suite("get should")(
@@ -49,7 +49,7 @@ object CountRepositorySpec extends DefaultRunnableSpec {
         assertM(result)(equalTo(map))
       },
       testM("overwrite the current state with given map") {
-        val newMap = HashMap("bar" -> HashMap("baz" -> 2))
+        val newMap = HashMap(("bar" , "baz") -> 2)
         val result = for {
           repository <- repository(map)
           _ <- repository.set(newMap)

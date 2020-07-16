@@ -1,5 +1,7 @@
 package com.ziverge
 
+import com.ziverge.config.Configuration
+import com.ziverge.config.Configuration.ServerConfig
 import com.ziverge.model.CountState
 import com.ziverge.service.{CountService, WordsStream}
 import com.ziverge.repository.CountRepository
@@ -13,9 +15,6 @@ import zio.blocking.Blocking
 import zio.console._
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.stream.ZStream
-import com.ziverge.config.Configuration
-import com.ziverge.config.Configuration.ServerConfig
 
 object Main extends App {
 
@@ -23,12 +22,12 @@ object Main extends App {
 
     def program(file: String) =
       for {
-        ref <- Ref.make(HashMap.empty[String, HashMap[String, Int]])
+        ref <- Ref.make(HashMap.empty[(String, String), Int])
         countState = CountState(ref)
         service = CountService(CountRepository(countState))
         routes = CountRoutes(service).routes()
         config <- Configuration.load().useNow
-        fiber <- WordsStream(config.streamConfig, service, Blocking.Service.live).stream(file).fork
+        _<- WordsStream(config.streamConfig, service, Blocking.Service.live).stream(file).fork
         _ <- server(config.server, routes)
       } yield ()
 
