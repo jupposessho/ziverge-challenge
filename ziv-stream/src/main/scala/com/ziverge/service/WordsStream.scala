@@ -27,7 +27,7 @@ object WordsStream {
         .transduce(utf8Decode >>> splitLines)
         .map(line => decode[InputRecord](line).toOption)
         .aggregateAsyncWithin(collectAllN(config.batchSize), Schedule.fixed(config.interval))
-        .foreach(p => countService.save(p))
+        .foreach(p => countService.saveBatch(p))
     }
 
     private def open(file: String) = {

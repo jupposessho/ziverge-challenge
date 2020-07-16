@@ -6,6 +6,7 @@ import org.http4s.EntityEncoder
 import org.http4s.circe.jsonEncoderOf
 
 final case class CountResponse(counts: List[EventCount])
+final case class BatchCount(counts: List[EventCount], timestamp: Long)
 final case class EventCount(eventType: String, wordCounts: List[WordCount])
 final case class WordCount(word: String, count: Long)
 

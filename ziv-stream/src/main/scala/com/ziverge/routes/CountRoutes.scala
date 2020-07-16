@@ -25,7 +25,7 @@ object CountRoutes {
           .of[Task] {
             case GET -> Root =>
               for {
-                countResponse <- countService.count()
+                countResponse <- countService.counts()
                 resp <- Ok(countResponse)
               } yield resp
           }

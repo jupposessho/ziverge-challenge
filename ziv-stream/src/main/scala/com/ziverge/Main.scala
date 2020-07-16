@@ -2,7 +2,7 @@ package com.ziverge
 
 import com.ziverge.config.Configuration
 import com.ziverge.config.Configuration.ServerConfig
-import com.ziverge.model.CountState
+import com.ziverge.model.{BatchCount, CountState}
 import com.ziverge.service.{CountService, WordsStream}
 import com.ziverge.repository.CountRepository
 import com.ziverge.routes.CountRoutes
@@ -12,6 +12,7 @@ import org.http4s.HttpApp
 import scala.collection.immutable.HashMap
 import zio._
 import zio.blocking.Blocking
+import zio.clock.Clock
 import zio.console._
 import zio.interop.catz._
 import zio.interop.catz.implicits._
@@ -22,9 +23,10 @@ object Main extends App {
 
     def program(file: String) =
       for {
-        ref <- Ref.make(HashMap.empty[(String, String), Int])
-        countState = CountState(ref)
-        service = CountService(CountRepository(countState))
+        currentRef <- Ref.make(HashMap.empty[(String, String), Int])
+        historyRef <- Ref.make(List.empty[BatchCount])
+        countState = CountState(currentRef, historyRef)
+        service = CountService(CountRepository(countState), Clock.Service.live)
         routes = CountRoutes(service).routes()
         config <- Configuration.load().useNow
         _<- WordsStream(config.streamConfig, service, Blocking.Service.live).stream(file).fork

@@ -4,7 +4,7 @@ import zio.Ref
 import scala.collection.immutable.HashMap
 import CountState._
 
-final case class CountState(ref: Ref[StateType]) extends AnyVal
+final case class CountState(current: Ref[StateType], history: Ref[List[BatchCount]])
 
 object CountState {
 

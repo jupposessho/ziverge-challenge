@@ -1,11 +1,12 @@
 package com.ziverge.routes
 
-import com.ziverge.model.CountState
+import com.ziverge.model.{BatchCount, CountState}
 import com.ziverge.model.CountState.StateType
 import com.ziverge.repository.CountRepository
 import com.ziverge.service.CountService
+import com.ziverge.utils.TestData._
 import org.http4s.implicits._
-import org.http4s.{Method, Request, Status}
+import org.http4s.{Method, Request}
 import zio.Ref
 import zio.interop.catz._
 import zio.test._
@@ -15,17 +16,17 @@ import scala.collection.immutable.HashMap
 
 object CountRoutesSpec extends DefaultRunnableSpec {
 
-  val emptyMap = HashMap.empty[(String, String), Int]
-
   override def spec = suite("CountRoutes")(
     suite("GET / should respond with")(
       testM("empty counts") {
-        assertCount(emptyMap, """{"counts":[]}""")
+        assertCount(emptyState, """{"counts":[]}""")
       },
       testM("multiple counts") {
         val map = HashMap(
-          ("foo", "word") -> 2, ("foo", "hello") -> 2,
-          ("bar", "word") -> 2, ("bar", "other") -> 1
+          ("foo", "word") -> 2,
+          ("foo", "hello") -> 2,
+          ("bar", "word") -> 2,
+          ("bar", "other") -> 1
         )
         val expected =
           """{"counts":[
@@ -47,11 +48,12 @@ object CountRoutesSpec extends DefaultRunnableSpec {
     assertM(result)(equalTo(expected))
   }
 
-  private def routes(map: StateType) =
+  private def routes(map: StateType, history: List[BatchCount] = Nil) =
     for {
-      ref <- Ref.make(map)
-      countState = CountState(ref)
+      cRef <- Ref.make(map)
+      hRef <- Ref.make(history)
+      countState = CountState(cRef, hRef)
       repository = CountRepository(countState)
-      service = CountService(repository)
+      service = CountService(repository, fakeClock())
     } yield CountRoutes(service)
 }
