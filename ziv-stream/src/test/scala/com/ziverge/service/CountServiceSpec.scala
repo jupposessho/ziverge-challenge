@@ -9,11 +9,21 @@ import zio.test.Assertion.equalTo
 import zio.test._
 
 import scala.collection.immutable.HashMap
+import zio.random.Random
 
 object CountServiceSpec extends DefaultRunnableSpec {
 
   val state = HashMap(("foo", "word") -> 1)
   val emptyHistory = List.empty[BatchCount]
+
+  val wordCountGen = (Gen.alphaNumericString zip Gen.anyLong).map(e => WordCount(e._1, e._2))
+  val eventCountGen = for {
+    wcList <- Gen.listOf(wordCountGen)
+    eventType <- Gen.alphaNumericString
+  } yield EventCount(eventType, wcList)
+  val batchCountGen = for {
+    events <- Gen.listOf(eventCountGen)
+  } yield BatchCount(events, fakeNow)
 
   override def spec = suite("CountService")(
     suite("saveBatch should")(
@@ -21,7 +31,7 @@ object CountServiceSpec extends DefaultRunnableSpec {
         val expected = List(BatchCount(Nil, fakeNow))
         assertSave(Nil, expected)
       },
-      testM("add empty batch count with None element") {
+      testM("add empty batch count with unparsable element") {
         val expected = List(BatchCount(Nil, fakeNow))
         assertSave(List(None), expected)
       },
@@ -41,7 +51,8 @@ object CountServiceSpec extends DefaultRunnableSpec {
                        EventCount("bar", List(WordCount("word", 1))),
                        EventCount("foo", List(WordCount("word", 1)))
                      ),
-                     fakeNow))
+                     fakeNow)
+        )
 
         assertSave(records, expected)
       },
@@ -74,7 +85,8 @@ object CountServiceSpec extends DefaultRunnableSpec {
                        EventCount("bar", List(WordCount("word", 2), WordCount("other", 1))),
                        EventCount("foo", List(WordCount("hello", 2), WordCount("word", 2)))
                      ),
-                     fakeNow))
+                     fakeNow)
+        )
 
         assertSave(records, expected)
       },
@@ -89,12 +101,12 @@ object CountServiceSpec extends DefaultRunnableSpec {
         assertSave(records, expected, history)
       }
     ),
-    suite("count should convert state to count response when")(
-      testM("state is empty") {
-        assertCount(emptyState, Nil)
+    suite("counts should repond with counts when")(
+      testM("state and history are empty") {
+        assertCount(emptyState, List(BatchCount(Nil, fakeNow)))
       },
-      testM("state has one element") {
-        val expected = List(EventCount("foo", List(WordCount("word", 1))))
+      testM("first batch is not completed") {
+        val expected = List(BatchCount(List(EventCount("foo", List(WordCount("word", 1)))), fakeNow))
         assertCount(state, expected)
       },
       testM("state has more elements") {
@@ -102,29 +114,40 @@ object CountServiceSpec extends DefaultRunnableSpec {
           ("foo", "word") -> 2,
           ("foo", "hello") -> 2,
           ("bar", "word") -> 2,
-          ("bar", "other") -> 1,
+          ("bar", "other") -> 1
         )
         val expected = List(
-          EventCount("bar", List(WordCount("word", 2), WordCount("other", 1))),
-          EventCount("foo", List(WordCount("hello", 2), WordCount("word", 2)))
+          BatchCount(List(
+                       EventCount("bar", List(WordCount("word", 2), WordCount("other", 1))),
+                       EventCount("foo", List(WordCount("hello", 2), WordCount("word", 2)))
+                     ),
+                     fakeNow)
         )
+
         assertCount(state, expected)
+      },
+      testM("there is a history") {
+        checkNM(5)(Gen.listOf(batchCountGen)) { history =>
+          val currentBatch = BatchCount(List(EventCount("foo", List(WordCount("word", 1)))), fakeNow)
+
+          val expected = currentBatch :: history
+
+          assertCount(state, expected, history)
+        }
       }
     )
   )
 
-  private def assertCount(state: StateType, expected: List[EventCount]) = {
+  private def assertCount(state: StateType, expected: List[BatchCount], history: List[BatchCount] = Nil) = {
     val result = for {
-      (_, service) <- service(state)
-      res <- service.count()
+      (_, service) <- service(state, history)
+      res <- service.counts()
     } yield res
 
     assertM(result)(equalTo(CountResponse(expected)))
   }
 
-  private def assertSave(records: List[Option[InputRecord]],
-                         expected: List[BatchCount],
-                         history: List[BatchCount] = Nil) = {
+  private def assertSave(records: List[Option[InputRecord]], expected: List[BatchCount], history: List[BatchCount] = Nil) = {
     val result = for {
       (repository, service) <- service(emptyState, history)
       _ <- service.saveBatch(records)
@@ -133,9 +156,9 @@ object CountServiceSpec extends DefaultRunnableSpec {
     assertM(result)(equalTo(expected))
   }
 
-  private def service(map: StateType, history: List[BatchCount] = Nil) =
+  private def service(state: StateType, history: List[BatchCount] = Nil) =
     for {
-      cRef <- Ref.make(map)
+      cRef <- Ref.make(state)
       hRef <- Ref.make(history)
       countState = CountState(cRef, hRef)
       repository = CountRepository(countState)

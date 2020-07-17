@@ -1,19 +1,19 @@
 package com.ziverge.service
 
-import java.util.concurrent.TimeUnit
-
 import com.ziverge.model.CountState.StateType
 import com.ziverge.model.{BatchCount, CountResponse, EventCount, InputRecord, WordCount}
 import com.ziverge.repository.CountRepository
 import zio._
 import zio.clock.Clock
 
+import java.util.concurrent.TimeUnit
 import scala.collection.immutable.HashMap
 
 object CountService {
 
   trait Service {
     def saveBatch(records: List[Option[InputRecord]]): Task[Unit]
+    def appendCurrent(record: InputRecord): Task[Unit]
     def counts(): Task[CountResponse]
   }
 
@@ -28,7 +28,13 @@ object CountService {
       }
 
       override def counts(): Task[CountResponse] =
-        repository.current().map(s => CountResponse(eventCounts(s)))
+        for {
+          now <- clock.currentTime(TimeUnit.MILLISECONDS)
+          current <- repository.current()
+          history <- repository.history()
+        } yield CountResponse(BatchCount(eventCounts(current), now) :: history)
+
+      def appendCurrent(record: InputRecord): Task[Unit] = repository.appendCurrent(record)
     }
   }
 

@@ -19,7 +19,7 @@ object CountRoutesSpec extends DefaultRunnableSpec {
   override def spec = suite("CountRoutes")(
     suite("GET / should respond with")(
       testM("empty counts") {
-        assertCount(emptyState, """{"counts":[]}""")
+        assertCount(emptyState, s"""{"counts":[{"batch":[],"timestamp":$fakeNow}]}""")
       },
       testM("multiple counts") {
         val map = HashMap(
@@ -29,10 +29,10 @@ object CountRoutesSpec extends DefaultRunnableSpec {
           ("bar", "other") -> 1
         )
         val expected =
-          """{"counts":[
+          s"""{"counts":[{"batch":[
             |{"eventType":"bar","wordCounts":[{"word":"word","count":2},{"word":"other","count":1}]},
             |{"eventType":"foo","wordCounts":[{"word":"hello","count":2},{"word":"word","count":2}]}
-            |]}""".stripMargin.replaceAll("\n", "")
+            |],"timestamp":$fakeNow}]}""".stripMargin.replaceAll("\n", "")
         assertCount(map, expected)
       }
     )

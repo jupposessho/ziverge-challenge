@@ -8,10 +8,11 @@ import zio.test._
 import zio.test.Assertion._
 
 import scala.collection.immutable.HashMap
+import com.ziverge.model.InputRecord
 
 object CountRepositorySpec extends DefaultRunnableSpec {
 
-  val state = HashMap(("foo" , "word") -> 1)
+  val state = HashMap(("foo", "word") -> 1)
   val batchCount = BatchCount(List(EventCount("foo", List(WordCount("bar", 2)))), 1)
 
   override def spec = suite("CountRepository")(
@@ -28,6 +29,7 @@ object CountRepositorySpec extends DefaultRunnableSpec {
           repository <- repository(state)
           res <- repository.current()
         } yield res
+
         assertM(result)(equalTo(state))
       },
       testM("react modifications from the outer world") {
@@ -38,56 +40,71 @@ object CountRepositorySpec extends DefaultRunnableSpec {
           _ <- cRef.set(emptyState)
           res <- CountRepository(countState).current()
         } yield res
+
         assertM(result)(equalTo(emptyState))
       }
     ),
-    suite("setCurrent should")(
-      testM("set given state when the current state is empty") {
-        val result = for {
-          repository <- repository(emptyState)
-          _ <- repository.setCurrent(state)
-          res <- repository.current()
-        } yield res
-        assertM(result)(equalTo(state))
+    suite("appendCurrent should append the current record to the existing state when")(
+      testM("current state is empty") {
+        val record = InputRecord("foo", "word", 1)
+        assertAppend(emptyState, record, state)
       },
-      testM("overwrite the current state with given one") {
-        val newMap = HashMap(("bar" , "baz") -> 2)
-        val result = for {
-          repository <- repository(state)
-          _ <- repository.setCurrent(newMap)
-          res <- repository.current()
-        } yield res
-        assertM(result)(equalTo(newMap))
+      testM("event type and word matches") {
+        val record = InputRecord("foo", "word", 1)
+        val expected = HashMap(("foo", "word") -> 2)
+
+        assertAppend(state, record, expected)
+      },
+      testM("event type is different") {
+        val record = InputRecord("bar", "word", 1)
+        val expected = HashMap(("foo", "word") -> 1, ("bar", "word") -> 1)
+
+        assertAppend(state, record, expected)
+      },
+      testM("word is different") {
+        val record = InputRecord("foo", "baz", 1)
+        val expected = HashMap(("foo", "word") -> 1, ("foo", "baz") -> 1)
+
+        assertAppend(state, record, expected)
       }
     ),
     suite("updateHistory should")(
       testM("set the given state as a history when history is empty") {
-
-        val result = for {
-          repository <- repository(emptyState, List.empty[BatchCount])
-          _ <- repository.updateHistory(batchCount)
-          res <- repository.history()
-        } yield res
-
-        assertM(result)(equalTo(List(batchCount)))
+        assertUpdateHistory(emptyState, Nil, batchCount, List(batchCount))
       },
       testM("append the given state to the history") {
         val newBatchCount = BatchCount(List(EventCount("fooo", List(WordCount("barrr", 3)))), 2)
-
-        val result = for {
-          repository <- repository(emptyState, List(batchCount))
-          _ <- repository.updateHistory(newBatchCount)
-          res <- repository.history()
-        } yield res
-
-        assertM(result)(equalTo(List(newBatchCount, batchCount)))
+        assertUpdateHistory(emptyState, List(batchCount), newBatchCount, List(newBatchCount, batchCount))
       }
     )
   )
 
-  private def repository(map: StateType, history: List[BatchCount] = Nil) = for {
-    cRef <- Ref.make(map)
-    hRef <- Ref.make(history)
-    countState = CountState(cRef, hRef)
-  } yield CountRepository(countState)
+  private def assertUpdateHistory(initialState: StateType,
+                                  history: List[BatchCount],
+                                  newBatchCount: BatchCount,
+                                  expected: List[BatchCount]) = {
+    val result = for {
+      repository <- repository(emptyState, history)
+      _ <- repository.updateHistory(newBatchCount)
+      res <- repository.history()
+    } yield res
+
+    assertM(result)(equalTo(expected))
+  }
+
+  private def assertAppend(initialState: StateType, record: InputRecord, expected: StateType) = {
+    val result = for {
+      repository <- repository(initialState)
+      _ <- repository.appendCurrent(record)
+      res <- repository.current()
+    } yield res
+    assertM(result)(equalTo(expected))
+  }
+
+  private def repository(map: StateType, history: List[BatchCount] = Nil) =
+    for {
+      cRef <- Ref.make(map)
+      hRef <- Ref.make(history)
+      countState = CountState(cRef, hRef)
+    } yield CountRepository(countState)
 }

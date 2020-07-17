@@ -26,6 +26,7 @@ object WordsStream {
         .fromInputStreamManaged(open(file))
         .transduce(utf8Decode >>> splitLines)
         .map(line => decode[InputRecord](line).toOption)
+        .tap(e => e.fold(UIO.unit)(i => countService.appendCurrent(i).orElse(UIO.unit)))
         .aggregateAsyncWithin(collectAllN(config.batchSize), Schedule.fixed(config.interval))
         .foreach(p => countService.saveBatch(p))
     }
