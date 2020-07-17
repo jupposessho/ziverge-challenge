@@ -14,7 +14,7 @@ object Configuration {
 
   final case class ServerConfig(host: String, port: Int)
 
-  final case class StreamConfig(interval: Duration, batchSize: Int)
+  final case class StreamConfig(interval: Duration, batchSize: Long)
 
   final case class AppConfig(server: ServerConfig, streamConfig: StreamConfig)
 

@@ -5,17 +5,17 @@ import java.io.{File, InputStream}
 object Tail {
 
   /**
-   * Create InputStream reading from a log file
-   *
-   * Calls follow with reasonable defaults:
-   * 3 open retries
-   * 1 second waiting for new file after the previous has disappeared
-   * 0.1 second waiting between reads
-   */
+    * Create InputStream reading from a log file
+    *
+    * Calls follow with reasonable defaults:
+    * 3 open retries
+    * 1 second waiting for new file after the previous has disappeared
+    * 0.1 second waiting between reads
+    */
   def follow(file: File): InputStream = {
     val maxRetries = 3
-    val waitToOpen = 1000
-    val waitBetweenReads = 100
+    val waitToOpen = 1000L
+    val waitBetweenReads = 100L
 
     def sleep(msec: Long) = () => Thread.sleep(msec)
 
@@ -23,16 +23,16 @@ object Tail {
   }
 
   /**
-   * Create InputStream reading from a log file
-   *
-   * Creates an Input Stream reading from a growing file, that may be rotated as well
-   * @param file File handle to the log file
-   * @openTries how many times to try to re-open the file
-   * @openSleep a function to sleep between re-open retries
-   * @rereadSleep a function to be called when the stream walked to the end of
+    * Create InputStream reading from a log file
+    *
+    * Creates an Input Stream reading from a growing file, that may be rotated as well
+    * @param file File handle to the log file
+    * @openTries how many times to try to re-open the file
+    * @openSleep a function to sleep between re-open retries
+    * @rereadSleep a function to be called when the stream walked to the end of
         the file and need to wait for some more input
-   * @return InputStream object
-   */
+    * @return InputStream object
+    */
   def follow(file: File, openTries: Int, openSleep: () => Unit, rereadSleep: () => Unit): InputStream = {
     import java.io.SequenceInputStream
 
@@ -45,20 +45,20 @@ object Tail {
   }
 
   /**
-   * Test file existence N times, wait between retries
-   *
-   * @param file file handle
-   * @tries how many times to try
-   * @sleep function to call between tests
-   * @return true on success
-   */
+    * Test file existence N times, wait between retries
+    *
+    * @param file file handle
+    * @tries how many times to try
+    * @sleep function to call between tests
+    * @return true on success
+    */
   def testExists(file: File, tries: Int, sleep: () => Unit): Boolean = {
     def tryExists(n: Int): Boolean =
       if (file.exists) true
       else if (n > tries) false
       else {
         sleep()
-        tryExists(n+1)
+        tryExists(n + 1)
       }
 
     tryExists(1)
@@ -66,14 +66,14 @@ object Tail {
 }
 
 /**
- * InputStream that handles growing file case
- *
- * The InputStream will not raise EOF when it comes to the file end. Contrary,
- * it will wait and continue reading.
- *
- * It will not handle the case when the file has been rotated. In this case,
- * it behaves just if it found EOF.
- */
+  * InputStream that handles growing file case
+  *
+  * The InputStream will not raise EOF when it comes to the file end. Contrary,
+  * it will wait and continue reading.
+  *
+  * It will not handle the case when the file has been rotated. In this case,
+  * it behaves just if it found EOF.
+  */
 class FollowingInputStream(val file: File, val waitNewInput: () => Unit) extends InputStream {
   import java.io.FileInputStream
   private val underlying = new FileInputStream(file)
@@ -86,9 +86,11 @@ class FollowingInputStream(val file: File, val waitNewInput: () => Unit) extends
 
   override def close = underlying.close
 
-  protected def rotated_? = try { underlying.getChannel.position > file.length } catch {
-    case _: Throwable => false
-  }
+  protected def rotated_? =
+    try { underlying.getChannel.position > file.length }
+    catch {
+      case _: Throwable => false
+    }
   protected def closed_? = !underlying.getChannel.isOpen
 
   protected def handle(read: => Int): Int = read match {

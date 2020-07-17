@@ -70,19 +70,16 @@ object CountRepositorySpec extends DefaultRunnableSpec {
     ),
     suite("updateHistory should")(
       testM("set the given state as a history when history is empty") {
-        assertUpdateHistory(emptyState, Nil, batchCount, List(batchCount))
+        assertUpdateHistory(Nil, batchCount, List(batchCount))
       },
       testM("append the given state to the history") {
         val newBatchCount = BatchCount(List(EventCount("fooo", List(WordCount("barrr", 3)))), 2)
-        assertUpdateHistory(emptyState, List(batchCount), newBatchCount, List(newBatchCount, batchCount))
+        assertUpdateHistory(List(batchCount), newBatchCount, List(newBatchCount, batchCount))
       }
     )
   )
 
-  private def assertUpdateHistory(initialState: StateType,
-                                  history: List[BatchCount],
-                                  newBatchCount: BatchCount,
-                                  expected: List[BatchCount]) = {
+  private def assertUpdateHistory(history: List[BatchCount], newBatchCount: BatchCount, expected: List[BatchCount]) = {
     val result = for {
       repository <- repository(emptyState, history)
       _ <- repository.updateHistory(newBatchCount)

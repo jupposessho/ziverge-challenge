@@ -6,12 +6,11 @@ import org.http4s.{HttpApp, HttpRoutes}
 import org.http4s.implicits._
 import zio.Task
 import zio.interop.catz._
-import zio.interop.catz.implicits._
 
 object CountRoutes {
 
   trait Service {
-   def routes(): HttpApp[Task]
+    def routes(): HttpApp[Task]
   }
 
   def apply(countService: CountService.Service) = {

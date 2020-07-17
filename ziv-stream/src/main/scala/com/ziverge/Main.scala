@@ -1,21 +1,16 @@
 package com.ziverge
 
 import com.ziverge.config.Configuration
-import com.ziverge.config.Configuration.ServerConfig
 import com.ziverge.model.{BatchCount, CountState}
-import com.ziverge.service.{CountService, WordsStream}
 import com.ziverge.repository.CountRepository
 import com.ziverge.routes.CountRoutes
-import org.http4s.server.blaze._
-import org.http4s.HttpApp
-
+import com.ziverge.service.{CountService, WordsStream}
+import com.ziverge.service.Bootstrap._
 import scala.collection.immutable.HashMap
 import zio._
-import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.console._
-import zio.interop.catz._
-import zio.interop.catz.implicits._
+import zio.stream.ZStream
 
 object Main extends App {
 
@@ -23,33 +18,28 @@ object Main extends App {
 
     def program(file: String) =
       for {
-        currentRef <- Ref.make(HashMap.empty[(String, String), Int])
-        historyRef <- Ref.make(List.empty[BatchCount])
+        config <- Configuration.load()
+        source <- open(file)
+        currentRef <- Ref.make(HashMap.empty[(String, String), Int]).toManaged_
+        historyRef <- Ref.make(List.empty[BatchCount]).toManaged_
         countState = CountState(currentRef, historyRef)
         service = CountService(CountRepository(countState), Clock.Service.live)
         routes = CountRoutes(service).routes()
-        config <- Configuration.load().useNow
-        _<- WordsStream(config.streamConfig, service, Blocking.Service.live).stream(file).fork
-        _ <- server(config.server, routes)
+        _ <- ZStream
+          .mergeAllUnbounded()(ZStream.fromEffect(
+                                 WordsStream(config.streamConfig, service)
+                                   .stream(source)
+                               ),
+                               ZStream.fromEffect(server(config.server, routes)))
+          .runDrain
+          .toManaged_
       } yield ()
 
     args match {
       case file :: Nil =>
-        program(file).exitCode
+        program(file).use_(ZIO.unit).exitCode
       case _ =>
         putStrLn("Missing filename argument") *> ZIO.succeed(ExitCode.failure)
     }
   }
-
-  def server(config: ServerConfig, routes: HttpApp[Task]) =
-    ZIO
-      .runtime[ZEnv]
-      .flatMap { implicit rts =>
-        BlazeServerBuilder[Task]
-          .bindHttp(config.port, config.host)
-          .withHttpApp(routes)
-          .serve
-          .compile
-          .drain
-      }
 }

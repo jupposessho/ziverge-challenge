@@ -9,14 +9,13 @@ import zio.test.Assertion.equalTo
 import zio.test._
 
 import scala.collection.immutable.HashMap
-import zio.random.Random
 
 object CountServiceSpec extends DefaultRunnableSpec {
 
   val state = HashMap(("foo", "word") -> 1)
   val emptyHistory = List.empty[BatchCount]
 
-  val wordCountGen = (Gen.alphaNumericString zip Gen.anyLong).map(e => WordCount(e._1, e._2))
+  val wordCountGen = (Gen.alphaNumericString zip Gen.anyInt).map(e => WordCount(e._1, e._2))
   val eventCountGen = for {
     wcList <- Gen.listOf(wordCountGen)
     eventType <- Gen.alphaNumericString
@@ -156,7 +155,7 @@ object CountServiceSpec extends DefaultRunnableSpec {
     assertM(result)(equalTo(expected))
   }
 
-  private def service(state: StateType, history: List[BatchCount] = Nil) =
+  private def service(state: StateType, history: List[BatchCount]) =
     for {
       cRef <- Ref.make(state)
       hRef <- Ref.make(history)

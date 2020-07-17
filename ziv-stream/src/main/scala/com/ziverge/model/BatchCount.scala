@@ -5,7 +5,7 @@ import io.circe.generic.semiauto.deriveEncoder
 
 final case class BatchCount(batch: List[EventCount], timestamp: Long)
 final case class EventCount(eventType: String, wordCounts: List[WordCount])
-final case class WordCount(word: String, count: Long)
+final case class WordCount(word: String, count: Int)
 
 object BatchCount {
   implicit val batchCountEncoder: Encoder[BatchCount] = deriveEncoder[BatchCount]
