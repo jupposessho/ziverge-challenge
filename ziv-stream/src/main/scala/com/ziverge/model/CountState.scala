@@ -9,4 +9,6 @@ final case class CountState(current: Ref[StateType], history: Ref[List[BatchCoun
 object CountState {
 
   type StateType = HashMap[(String, String), Int]
+
+  val empty = HashMap.empty[(String, String), Int]
 }

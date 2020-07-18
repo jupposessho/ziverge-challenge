@@ -1,17 +1,15 @@
 package com.ziverge.utils
 
+import com.ziverge.model.CountState
 import java.time.{DateTimeException, OffsetDateTime}
 import java.util.concurrent.TimeUnit
-
 import zio.clock.Clock
 import zio.duration.Duration
 import zio.{IO, UIO}
 
-import scala.collection.immutable.HashMap
-
 object TestData {
 
-  val emptyState = HashMap.empty[(String, String), Int]
+  val emptyState = CountState.empty
 
   val fakeNow = 1594934147262L
 

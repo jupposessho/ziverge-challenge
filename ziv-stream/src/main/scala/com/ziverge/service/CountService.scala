@@ -8,33 +8,35 @@ import zio.clock.Clock
 
 import java.util.concurrent.TimeUnit
 import scala.collection.immutable.HashMap
+import com.ziverge.model.CountState
 
 object CountService {
 
   trait Service {
-    def saveBatch(records: List[Option[InputRecord]]): Task[Unit]
-    def appendCurrent(record: InputRecord): Task[Unit]
-    def counts(): Task[CountResponse]
+    def saveBatch(records: List[Option[InputRecord]]): UIO[Unit]
+    def appendCurrent(record: InputRecord): UIO[Unit]
+    def counts(): UIO[CountResponse]
   }
 
   def apply(repository: CountRepository.Service, clock: Clock.Service) = {
     new Service {
-      override def saveBatch(records: List[Option[InputRecord]]): Task[Unit] = {
+      override def saveBatch(records: List[Option[InputRecord]]): UIO[Unit] = {
         val eventCounts = calculateBatchCount(records)
         for {
+          _ <- repository.resetCurrent()
           now <- clock.currentTime(TimeUnit.MILLISECONDS)
           _ <- repository.updateHistory(BatchCount(eventCounts, now))
         } yield ()
       }
 
-      override def counts(): Task[CountResponse] =
+      override def counts(): UIO[CountResponse] =
         for {
           now <- clock.currentTime(TimeUnit.MILLISECONDS)
           current <- repository.current()
           history <- repository.history()
-        } yield CountResponse(BatchCount(eventCounts(current), now) :: history)
+        } yield CountResponse(if (current == CountState.empty) history else BatchCount(eventCounts(current), now) :: history)
 
-      def appendCurrent(record: InputRecord): Task[Unit] = repository.appendCurrent(record)
+      def appendCurrent(record: InputRecord): UIO[Unit] = repository.appendCurrent(record)
     }
   }
 

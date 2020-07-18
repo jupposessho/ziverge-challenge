@@ -102,11 +102,14 @@ object CountServiceSpec extends DefaultRunnableSpec {
     ),
     suite("counts should repond with counts when")(
       testM("state and history are empty") {
-        assertCount(emptyState, List(BatchCount(Nil, fakeNow)))
+        assertCount(emptyState, Nil)
       },
       testM("first batch is not completed") {
         val expected = List(BatchCount(List(EventCount("foo", List(WordCount("word", 1)))), fakeNow))
         assertCount(state, expected)
+      },
+      testM("current state is empty - skipped from result") {
+        checkNM(5)(Gen.listOf(batchCountGen)) { history => assertCount(emptyState, history, history) }
       },
       testM("state has more elements") {
         val state = HashMap(
