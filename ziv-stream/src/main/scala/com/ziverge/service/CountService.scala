@@ -26,7 +26,7 @@ object CountService {
           eventCounts <- calculateBatchCount(records)
           _ <- repository.resetCurrent()
           now <- clock.currentTime(TimeUnit.MILLISECONDS)
-          _ <- repository.updateHistory(BatchCount(eventCounts, now))
+          _ <- repository.updateHistory(BatchCount(eventCounts.toList, now))
         } yield ()
       }
 
@@ -35,7 +35,7 @@ object CountService {
           now <- clock.currentTime(TimeUnit.MILLISECONDS)
           current <- repository.current()
           history <- repository.history()
-          batches <- if (current == CountState.empty) UIO.succeed(history) else eventCounts(current).map(e => BatchCount(e, now) :: history)
+          batches <- if (current == CountState.empty) UIO.succeed(history) else eventCounts(current).map(e => BatchCount(e.toList, now) :: history)
         } yield CountResponse(batches)
 
       def appendCurrent(record: InputRecord): UIO[Unit] = repository.appendCurrent(record)
@@ -52,12 +52,13 @@ object CountService {
             case ((_, word), count) =>
               WordCount(word, count)
           }
-          ZStream.fromEffect(wordCounts.runCollect.map(EventCount(eventType, _)))
+
+          ZStream.fromEffect(wordCounts.runCollect.map(e => EventCount(eventType, e.toList)))
       }
       .runCollect
   }
 
-  private def calculateBatchCount(records: List[Option[InputRecord]]): UIO[List[EventCount]] =
+  private def calculateBatchCount(records: List[Option[InputRecord]]): UIO[Chunk[EventCount]] =
     for {
       events <- ZStream
         .fromIterable(records)

@@ -4,17 +4,17 @@ object Versions {
   val Circe = "0.13.0"
   val Logback = "1.2.3"
   val PureConfig = "0.12.2"
-  val Zio = "1.0.0-RC20"
-  val Http4s = "0.21.3"
+  val Zio = "1.0.0-RC21-2"
+  val Http4s = "1.0.0-M3"
 }
 
 object Dependencies {
 
   lazy val zio = Seq(
     "dev.zio" %% "zio" % Versions.Zio,
-    "dev.zio" %% "zio-interop-cats" % "2.1.3.0-RC15",
+    "dev.zio" %% "zio-streams" % Versions.Zio,
     "dev.zio" %% "zio-macros" % Versions.Zio,
-    "dev.zio" %% "zio-logging" % "0.3.1",
+    "dev.zio" %% "zio-interop-cats" % "2.1.4.0-RC17",
     "dev.zio" %% "zio-test" % Versions.Zio % Test,
     "dev.zio" %% "zio-test-sbt" % Versions.Zio % Test
   )

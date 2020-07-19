@@ -15,7 +15,7 @@ object Bootstrap {
     ZIO
       .runtime[ZEnv]
       .flatMap { implicit rts =>
-        BlazeServerBuilder[Task]
+        BlazeServerBuilder[Task](rts.platform.executor.asEC)
           .bindHttp(config.port, config.host)
           .withHttpApp(routes)
           .serve
