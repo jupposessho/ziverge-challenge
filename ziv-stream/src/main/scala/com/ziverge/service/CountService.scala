@@ -44,16 +44,20 @@ object CountService {
     state
       .map { eventCount => (eventCount._1._1, eventCount._1._2, eventCount._2) }
       .groupBy(_._1)
-      .map { eventType =>
-        val list = eventType._2.map(e => WordCount(e._2, e._3)).toList
-        EventCount(eventType._1, list)
+      .map {
+        case (eventType, wordCounts) =>
+          val list = wordCounts.map {
+            case (_, word, count) =>
+              WordCount(word, count)
+          }.toList
+          EventCount(eventType, list)
       }
       .toList
   }
 
   private def calculateBatchCount(records: List[Option[InputRecord]]): List[EventCount] = {
     val state = records.flatten.foldLeft(HashMap.empty[(String, String), Int]) { (map, record) =>
-      map.updatedWith(record.event_type -> record.data) { keys => keys.map(_ + 1).orElse(Some(1)) }
+      map.updatedWith(record.eventType -> record.data) { keys => keys.map(_ + 1).orElse(Some(1)) }
     }
 
     eventCounts(state)

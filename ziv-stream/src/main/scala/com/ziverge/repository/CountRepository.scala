@@ -17,7 +17,7 @@ object CountRepository {
   def apply(countState: CountState) =
     new Service {
       override def appendCurrent(record: InputRecord): UIO[Unit] = {
-        countState.current.update(_.updatedWith(record.event_type -> record.data)(_.map(_ + 1).orElse(Some(1))))
+        countState.current.update(_.updatedWith(record.eventType -> record.data)(_.map(_ + 1).orElse(Some(1))))
       }
 
       override def current(): UIO[StateType] = countState.current.get

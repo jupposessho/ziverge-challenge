@@ -16,7 +16,7 @@ object CountRepositorySpec extends DefaultRunnableSpec {
   val batchCount = BatchCount(List(EventCount("foo", List(WordCount("bar", 2)))), 1)
 
   override def spec = suite("CountRepository")(
-    suite("get should")(
+    suite("current should")(
       testM("return empty map when no record found") {
         val result = for {
           repository <- repository(emptyState)
@@ -75,6 +75,16 @@ object CountRepositorySpec extends DefaultRunnableSpec {
       testM("append the given state to the history") {
         val newBatchCount = BatchCount(List(EventCount("fooo", List(WordCount("barrr", 3)))), 2)
         assertUpdateHistory(List(batchCount), newBatchCount, List(newBatchCount, batchCount))
+      }
+    ),
+    suite("resetCurrent should")(
+      testM("reset the current state") {
+        val result = for {
+          repository <- repository(state)
+          _ <- repository.resetCurrent()
+          res <- repository.current()
+        } yield res
+        assertM(result)(equalTo(emptyState))
       }
     )
   )

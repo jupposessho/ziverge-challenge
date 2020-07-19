@@ -2,15 +2,18 @@
 
 ## Running
 
-From the terminal, run
+From the terminal, run the input source:
 
-`./blackbox.macosx > <input_filename>`
+`./blackbox.macosx > <input_filename>` 
 
-`sbt "zivStream/pack"` 
 
-and then
+To run the application, run
 
-`ziv-stream/target/pack/bin/main <input_filename>`
+`sbt "zivStream/run  <input_filename>"` 
+
+or
+
+`sbt "zivStream/pack"` and then `ziv-stream/target/pack/bin/main <input_filename>`
 
 ## Running Tests
 

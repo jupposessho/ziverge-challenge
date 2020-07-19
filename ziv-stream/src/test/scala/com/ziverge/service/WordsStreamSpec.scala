@@ -39,7 +39,7 @@ object WordsStreamSpec extends DefaultRunnableSpec {
     val input = new ByteArrayInputStream(exampleString.getBytes(StandardCharsets.UTF_8))
     val result = for {
       (service, streamService) <- wordStream(batchSize)
-      _ <- streamService.stream(input)
+      _ <- streamService.stream(input).runDrain
       counts <- service.counts()
     } yield counts
 

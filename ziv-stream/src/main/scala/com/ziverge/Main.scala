@@ -26,10 +26,7 @@ object Main extends App {
         service = CountService(CountRepository(countState), Clock.Service.live)
         routes = CountRoutes(service).routes()
         _ <- ZStream
-          .mergeAllUnbounded()(ZStream.fromEffect(
-                                 WordsStream(config.streamConfig, service)
-                                   .stream(source)
-                               ),
+          .mergeAllUnbounded()(WordsStream(config.streamConfig, service).stream(source),
                                ZStream.fromEffect(server(config.server, routes)))
           .runDrain
           .toManaged_

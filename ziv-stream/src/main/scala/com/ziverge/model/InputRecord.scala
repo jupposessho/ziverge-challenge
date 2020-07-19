@@ -1,10 +1,12 @@
 package com.ziverge.model
 
-import io.circe.Decoder
-import io.circe.generic.semiauto.deriveDecoder
+import io.circe._
+import io.circe.generic.extras.Configuration
+import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
 
-final case class InputRecord(event_type: String, data: String, timestamp: Long)
+final case class InputRecord(eventType: String, data: String, timestamp: Long)
 
 object InputRecord {
-  implicit val fooDecoder: Decoder[InputRecord] = deriveDecoder[InputRecord]
+  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
+  implicit val inputRecordDecoder: Decoder[InputRecord] = deriveConfiguredDecoder
 }
