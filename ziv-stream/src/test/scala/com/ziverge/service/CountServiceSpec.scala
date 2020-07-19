@@ -1,6 +1,6 @@
 package com.ziverge.service
 
-import com.ziverge.model.{BatchCount, CountResponse, CountState, EventCount, InputRecord, WordCount}
+import com.ziverge.model.{BatchCount, CountState, EventCount, InputRecord, WordCount}
 import com.ziverge.model.CountState.StateType
 import com.ziverge.repository.CountRepository
 import com.ziverge.utils.TestData._
@@ -100,7 +100,7 @@ object CountServiceSpec extends DefaultRunnableSpec {
         assertSave(records, expected, history)
       }
     ),
-    suite("counts should repond with counts when")(
+    suite("counts should respond with counts when")(
       testM("state and history are empty") {
         assertCount(emptyState, Nil)
       },
@@ -109,7 +109,9 @@ object CountServiceSpec extends DefaultRunnableSpec {
         assertCount(state, expected)
       },
       testM("current state is empty - skipped from result") {
-        checkNM(5)(Gen.listOf(batchCountGen)) { history => assertCount(emptyState, history, history) }
+        checkNM(5)(Gen.listOf(batchCountGen)) { history =>
+          assertCount(emptyState, history, history)
+        }
       },
       testM("state has more elements") {
         val state = HashMap(
@@ -141,21 +143,20 @@ object CountServiceSpec extends DefaultRunnableSpec {
   )
 
   private def assertCount(state: StateType, expected: List[BatchCount], history: List[BatchCount] = Nil) = {
-    val result = for {
+    for {
       (_, service) <- service(state, history)
       res <- service.counts()
-    } yield res
-
-    assertM(result)(equalTo(CountResponse(expected)))
+    } yield assert(unOrder(res.counts))(equalTo(unOrder(expected)))
   }
 
   private def assertSave(records: List[Option[InputRecord]], expected: List[BatchCount], history: List[BatchCount] = Nil) = {
-    val result = for {
+    for {
       (repository, service) <- service(emptyState, history)
       _ <- service.saveBatch(records)
       res <- repository.history()
-    } yield res
-    assertM(result)(equalTo(expected))
+    } yield {
+      assert(unOrder(res))(equalTo(unOrder(expected)))
+    }
   }
 
   private def service(state: StateType, history: List[BatchCount]) =
@@ -167,4 +168,11 @@ object CountServiceSpec extends DefaultRunnableSpec {
     } yield {
       (repository, CountService(repository, fakeClock()))
     }
+
+  private def unOrder(batches: List[BatchCount]) =
+    batches.map { batchCount =>
+      batchCount.timestamp -> batchCount.batch
+        .map(e => e.eventType -> e.wordCounts.toSet)
+        .toSet
+    }.toSet
 }

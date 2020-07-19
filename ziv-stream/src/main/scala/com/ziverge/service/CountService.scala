@@ -5,10 +5,11 @@ import com.ziverge.model.{BatchCount, CountResponse, EventCount, InputRecord, Wo
 import com.ziverge.repository.CountRepository
 import zio._
 import zio.clock.Clock
-
 import java.util.concurrent.TimeUnit
+
 import scala.collection.immutable.HashMap
 import com.ziverge.model.CountState
+import zio.stream.ZStream
 
 object CountService {
 
@@ -21,8 +22,8 @@ object CountService {
   def apply(repository: CountRepository.Service, clock: Clock.Service) = {
     new Service {
       override def saveBatch(records: List[Option[InputRecord]]): UIO[Unit] = {
-        val eventCounts = calculateBatchCount(records)
         for {
+          eventCounts <- calculateBatchCount(records)
           _ <- repository.resetCurrent()
           now <- clock.currentTime(TimeUnit.MILLISECONDS)
           _ <- repository.updateHistory(BatchCount(eventCounts, now))
@@ -34,32 +35,38 @@ object CountService {
           now <- clock.currentTime(TimeUnit.MILLISECONDS)
           current <- repository.current()
           history <- repository.history()
-        } yield CountResponse(if (current == CountState.empty) history else BatchCount(eventCounts(current), now) :: history)
+          batches <- if (current == CountState.empty) UIO.succeed(history) else eventCounts(current).map(e => BatchCount(e, now) :: history)
+        } yield CountResponse(batches)
 
       def appendCurrent(record: InputRecord): UIO[Unit] = repository.appendCurrent(record)
     }
   }
 
-  private def eventCounts(state: StateType): List[EventCount] = {
-    state
-      .map { eventCount => (eventCount._1._1, eventCount._1._2, eventCount._2) }
-      .groupBy(_._1)
-      .map {
-        case (eventType, wordCounts) =>
-          val list = wordCounts.map {
-            case (_, word, count) =>
+  private def eventCounts(state: StateType) = {
+    ZStream
+      .fromIterable(state)
+      .groupByKey(_._1._1)
+      .apply {
+        case (eventType, subStream) =>
+          val wordCounts = subStream.collect {
+            case ((_, word), count) =>
               WordCount(word, count)
-          }.toList
-          EventCount(eventType, list)
+          }
+          ZStream.fromEffect(wordCounts.runCollect.map(EventCount(eventType, _)))
       }
-      .toList
+      .runCollect
   }
 
-  private def calculateBatchCount(records: List[Option[InputRecord]]): List[EventCount] = {
-    val state = records.flatten.foldLeft(HashMap.empty[(String, String), Int]) { (map, record) =>
-      map.updatedWith(record.eventType -> record.data) { keys => keys.map(_ + 1).orElse(Some(1)) }
-    }
-
-    eventCounts(state)
-  }
+  private def calculateBatchCount(records: List[Option[InputRecord]]): UIO[List[EventCount]] =
+    for {
+      events <- ZStream
+        .fromIterable(records)
+        .collect {
+          case Some(r) => r
+        }
+        .fold(HashMap.empty[(String, String), Int]) { (state, inputRecord) =>
+          state.updatedWith(inputRecord.eventType -> inputRecord.data) { _.map(_ + 1).orElse(Some(1)) }
+        }
+      eventCounts <- eventCounts(events)
+    } yield eventCounts
 }
