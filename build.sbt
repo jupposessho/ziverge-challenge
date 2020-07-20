@@ -16,7 +16,7 @@ lazy val zivStream = project
   .settings(commonSettings)
   .settings(
     name := "ziv-stream",
-    libraryDependencies ++= zio ++ http4s ++ circe :+ pureConfig :+ logback
+    libraryDependencies ++= zio ++ http4s ++ circe :+ pureConfig :+ logback :+ os
   )
 
 lazy val root = project

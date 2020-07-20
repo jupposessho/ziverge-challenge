@@ -1,19 +1,14 @@
-# Coding Challange
+# Coding Challenge
 
 ## Running
 
-From the terminal, run the input source:
-
-`./blackbox.macosx > <input_filename>` 
-
-
 To run the application, run
 
-`sbt "zivStream/run  <input_filename>"` 
+`sbt "zivStream/run  <path_to_producer_script>"` 
 
 or
 
-`sbt "zivStream/pack"` and then `ziv-stream/target/pack/bin/main <input_filename>`
+`sbt "zivStream/pack"` and then `ziv-stream/target/pack/bin/main <path_to_producer_script>`
 
 ## Running Tests
 
